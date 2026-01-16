@@ -4,3 +4,4 @@ python-dotenv
 requests
 resend
 pandas
+python-multipart
