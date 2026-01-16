@@ -20,18 +20,18 @@ def speak(text: str):
     return f"<Say>{text}</Say>"
 
 
-def send_email(timing):
+def send_email(timing, customer_number):
     try:
         resend.Emails.send({
             "from": "Solar AI <onboarding@resend.dev>",
             "to": OWNER_EMAIL,
-            "subject": "🔥 Interested Solar Lead",
+            "subject": "✅ Solar Lead Accepted",
             "html": f"""
-            <p>A customer is interested in solar installation.</p>
-            <p><b>Available Time:</b> {timing}</p>
+            <p>User <b>{customer_number}</b> accepted our solar setup offer.</p>
+            <p><b>Free Timing:</b> {timing}</p>
             """
         })
-        print(f"Email sent for timing: {timing}")
+        print(f"Email sent for {customer_number} at {timing}")
     except Exception as e:
         print(f"Failed to send email: {e}")
 
@@ -44,6 +44,7 @@ async def exotel_webhook(request: Request):
         form = {}
     
     user_input = (form.get("Digits") or form.get("SpeechResult") or "").lower()
+    customer_number = form.get("From") or "Unknown Number"
 
     try:
         response = "<Response>"
@@ -81,8 +82,10 @@ async def exotel_webhook(request: Request):
             return Response(content=response, media_type="application/xml")
 
         # STEP 3: Capture Time & Send Email
-        if any(word in user_input for word in ["morning", "afternoon", "evening", "today", "tomorrow"]):
-            send_email(user_input)
+        # We check for time keywords, OR if the input is longer than 2 chars and NOT 'yes'/'no' 
+        # (Assuming it's a time answer if they are still on the line)
+        if any(word in user_input for word in ["morning", "afternoon", "evening", "today", "tomorrow", "at", "pm", "am", "oclock"]):
+            send_email(user_input, customer_number)
             response += speak(
                 "Thank you. I have shared your availability. You will be contacted soon. Have a great day."
             )
