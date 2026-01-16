@@ -19,7 +19,7 @@ def make_call(to_number):
     data = {
         "From": CALLER_ID,
         "To": to_number,
-        "Url": "https://your-railway-app.up.railway.app/exotel-webhook"
+        "Url": "https://sdc-version-64-production.up.railway.app/exotel-webhook"
     }
     # Note: requests.post auth handles basic auth automatically with tuple
     try:
