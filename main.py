@@ -38,8 +38,12 @@ def send_email(timing):
 
 @app.post("/exotel-webhook")
 async def exotel_webhook(request: Request):
-    form = await request.form()
-    user_input = form.get("Digits") or form.get("SpeechResult", "").lower()
+    try:
+        form = await request.form()
+    except Exception:
+        form = {}
+    
+    user_input = (form.get("Digits") or form.get("SpeechResult") or "").lower()
 
     response = "<Response>"
 
