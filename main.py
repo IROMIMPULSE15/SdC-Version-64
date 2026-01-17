@@ -47,16 +47,18 @@ def speak(text: str):
 def send_email(timing, customer_number):
     try:
         # Lookup Name
-        # Try exact match, then try checking if customer_number ends with key, etc.
-        # For simple robustness, we assume exact match or close to it.
-        customer_name = CONTACTS_DB.get(customer_number, "Unknown Name")
-        
-        # Fallback partial match if exact match fails
-        if customer_name == "Unknown Name":
-             for db_phone, db_name in CONTACTS_DB.items():
-                 if db_phone in customer_number or customer_number in db_phone:
-                     customer_name = db_name
-                     break
+        # Helper to normalize phone numbers (keep last 10 digits)
+        def normalize_phone(p):
+            return "".join(filter(str.isdigit, str(p)))[-10:]
+
+        customer_name = "Unknown Name"
+        incoming_norm = normalize_phone(customer_number)
+
+        # Iterate over DB to find a match
+        for db_phone, db_name in CONTACTS_DB.items():
+            if normalize_phone(db_phone) == incoming_norm:
+                customer_name = db_name
+                break
 
         html_content = f"""
         <h2>✅ New Solar Lead Captured</h2>
