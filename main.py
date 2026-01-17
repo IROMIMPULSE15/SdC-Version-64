@@ -12,8 +12,32 @@ except ImportError:
 
 app = FastAPI()
 
+import pandas as pd
+
 resend.api_key = os.getenv("RESEND_API_KEY")
 OWNER_EMAIL = os.getenv("OWNER_EMAIL")
+
+# LOAD CONTACTS DB
+CONTACTS_DB = {}
+if os.path.exists("contacts.csv"):
+    try:
+        df = pd.read_csv("contacts.csv")
+        # Normalize keys: strip spaces, keep as string
+        # Assuming 'phone' and 'name' columns exist
+        if "phone" in df.columns and "name" in df.columns:
+            for _, row in df.iterrows():
+                p = str(row["phone"]).strip()
+                n = str(row["name"]).strip()
+                CONTACTS_DB[p] = n
+        print(f"Loaded {len(CONTACTS_DB)} contacts for name lookup.")
+    except Exception as e:
+        print(f"Error loading contacts.csv: {e}")
+
+if not resend.api_key:
+    print("⚠️ CRITICAL: RESEND_API_KEY is missing from environment variables!")
+
+if not OWNER_EMAIL:
+    print("⚠️ CRITICAL: OWNER_EMAIL is missing from environment variables!")
 
 
 def speak(text: str):
@@ -22,16 +46,35 @@ def speak(text: str):
 
 def send_email(timing, customer_number):
     try:
+        # Lookup Name
+        # Try exact match, then try checking if customer_number ends with key, etc.
+        # For simple robustness, we assume exact match or close to it.
+        customer_name = CONTACTS_DB.get(customer_number, "Unknown Name")
+        
+        # Fallback partial match if exact match fails
+        if customer_name == "Unknown Name":
+             for db_phone, db_name in CONTACTS_DB.items():
+                 if db_phone in customer_number or customer_number in db_phone:
+                     customer_name = db_name
+                     break
+
+        html_content = f"""
+        <h2>✅ New Solar Lead Captured</h2>
+        <p><b>Name:</b> {customer_name}</p>
+        <p><b>Number:</b> {customer_number}</p>
+        <p><b>Status:</b> Approved (Interest Confirmed)</p>
+        <p><b>Preferred Timing:</b> {timing}</p>
+        <hr>
+        <p><i>This customer has explicitly expressed interest and provided a time for a meeting.</i></p>
+        """
+
         resend.Emails.send({
             "from": "Solar AI <onboarding@resend.dev>",
             "to": OWNER_EMAIL,
-            "subject": "✅ Solar Lead Accepted",
-            "html": f"""
-            <p>User <b>{customer_number}</b> accepted our solar setup offer.</p>
-            <p><b>Free Timing:</b> {timing}</p>
-            """
+            "subject": f"Lead: {customer_name} - {timing}",
+            "html": html_content
         })
-        print(f"Email sent for {customer_number} at {timing}")
+        print(f"Email sent for {customer_name} ({customer_number}) at {timing}")
     except Exception as e:
         print(f"Failed to send email: {e}")
 
